@@ -1,0 +1,1 @@
+Developed AI-powered branding content using generative AI tools to create brand-focused images and videos. The project demonstrates prompt engineering, visual storytelling, creative content generation, and AI-driven brand communication for digital marketing campaigns.
