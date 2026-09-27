@@ -1,0 +1,218 @@
+{
+  "name": "AI Personal Assistant - Telegram Gmail Calendar",
+  "nodes": [
+    {
+      "id": "01a33f0d-ea14-47a3-bc6e-85f58fb576e2",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -384,
+        0
+      ],
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "webhookId": "144d0285-0e56-4939-8111-30c003514337"
+    },
+    {
+      "id": "8a847fe0-4c03-437f-9ac4-20e971028d18",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -48,
+        -144
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "You are a smart, helpful personal assistant tasked with performing actions.\n\nYou have access to these tools:\n\n- Telegram Message Sender: Send messages via Telegram\n\n- Gmail Tool: Send emails via Gmail\n\n- Calendar Event Setter : Setup events on google calendar\n\n- Fireflies Fetch Meeting Names and Transcript ids - Tool used to fetch meeting names and transcription ids\n\n- Fireflies Transcript Fetcher For a Meeting - tool used to fetch transcript for a given transcript ID from Fireflies.\n\n\nRules you MUST FOLLOW:\n\n1. Analyze the user input to determine which tool(s) to use\n\n2. Always respond back to the user via Telegram Message Sender after completing tasks\n\n3. When sending emails, extract recipient, subject, and message from user input\n\n4. Here is the current time - {{ $now }}, this will be helpful when you need to setup a calendar invite/event\n\n5. Whenever user wants summaries, minutes of the meeting of a meeting, you should first fetch the list of available meetings using the tool 'Fireflies Fetch Meeting Names and Transcript ids', fetch the meeting id of the meeting that user is interested in, and then fetch transcript for that meeting_id by calling the tool 'Fireflies Transcript Fetcher For a Meeting' and then create summaries/minutes of the meeting based on what user requests\n\nHere is the request payload you need to pass to the 'Fireflies Transcript Fetcher For a Meeting' tool:\n\n\n\n{\n\n  \"query\": \"query Transcript($transcriptId: String!) { transcript(id: $transcriptId) { title id speakers { id name } sentences { speaker_name speaker_id text start_time end_time } } }\",\n\n  \"variables\": {\n\n    \"transcriptId\": \"your_transcript_id\"\n\n  }\n\n}\n\n\nPlease Make sure to replace your_transcript_id with the actual transcript id you received for the user's requested meeting from calling 'Fireflies Fetch Meeting Names and Transcript ids' tool\n\n\n"
+        }
+      }
+    },
+    {
+      "id": "640402a2-dac5-4363-a947-8ca773b37005",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -144,
+        96
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "776c8406-93c3-4222-a4da-8e891d724141",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        32,
+        96
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "Suman"
+      }
+    },
+    {
+      "id": "11fc4407-a9ec-4338-8e04-73dff4a13bde",
+      "name": "Gmail Tool",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        112
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "descriptionType": "manual",
+        "toolDescription": "Send a message in Gmail",
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "emailType": "text",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "webhookId": "8125d638-056b-41c3-9389-af32d31bb857"
+    },
+    {
+      "id": "421590c7-ef19-4602-80f5-4a6a6e1fdeb0",
+      "name": "Calendar event setter",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        80
+      ],
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "descriptionType": "manual",
+        "toolDescription": "Create an event in Google Calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "suman844@gmail.com",
+          "mode": "list",
+          "cachedResultName": "suman844@gmail.com"
+        },
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "7f060a15-b65e-41c5-8df6-48f8c155ed9c",
+      "name": "Telegram message sender",
+      "type": "n8n-nodes-base.telegramTool",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        112
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $fromAI('Message', 'The message text to send back to the user on Telegram', 'string') }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "webhookId": "d1c0e90f-1759-442f-ae49-de89a4aed676"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar event setter": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram message sender": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
